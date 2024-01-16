@@ -1,0 +1,102 @@
+#Fernando Jassiel Castañón Hernández
+#Python
+
+import random                       #importacion de librerias
+import matplotlib.pyplot as plt
+
+def calcular_distancia(ciudad1, ciudad2):                                           #comienza a calcular la distancia entre dos ciudades a partir de sus coordenadas
+    return ((ciudad1[0] - ciudad2[0])**2 + (ciudad1[1] - ciudad2[1])**2)**0.5
+
+def generar_matriz_distancias(ciudades):                #Se genera una matriz de distancias entre todas las ciudades, la matriz es necesaria para evaluar la mejor ruta
+    num_ciudades = len(ciudades)
+    distancias = [[0] * num_ciudades for _ in range(num_ciudades)]
+    
+    for i in range(num_ciudades):
+        for j in range(i+1, num_ciudades):
+            distancia = calcular_distancia(ciudades[i], ciudades[j])
+            distancias[i][j] = distancia
+            distancias[j][i] = distancia
+
+    return distancias
+
+def evaluar_ruta(ruta, distancias):   #Una vez obteniadas las distancias, comienza a evaluar una ruta completa
+    longitud = 0
+    for i in range(len(ruta) - 1):
+        longitud += distancias[ruta[i]][ruta[i + 1]]
+    longitud += distancias[ruta[-1]][ruta[0]]
+    return longitud
+
+def inicializar_poblacion(num_ciudades, tamano_poblacion): #Al inicializar la poblacion con los parametros establecidos, genera una poblacion de 10 rutas
+    poblacion = []
+    for _ in range(tamano_poblacion):
+        ruta = list(range(num_ciudades))
+        random.shuffle(ruta)        #elige una ruta al azar y la agrega a la poblacion
+        poblacion.append(ruta)
+    return poblacion
+
+def seleccionar_padres(poblacion, distancias):      #Inicializa la eleccion de padres dependieno de las mejores al azar entre la poblacion
+    padres = []
+    for _ in range(len(poblacion)):
+        torneo = random.sample(poblacion, 3)            #Selecciona 3 rutas al azar entre la poblacion
+        mejor_ruta = min(torneo, key=lambda x: evaluar_ruta(x, distancias))         #Elije la ruta mas corta entre las seleccionadas comparandola en la matriz de distancias
+        padres.append(mejor_ruta)  #Agrega la mejor ruta a la lista de padres, necesaria para la siguiente etapa del algoritmo
+    return padres
+
+def cruzar(padres):  #Una vez seleccionados los mejores padres se cruzan para obtener los mejores hijos, que se traduce en mejores rutas a partir de las mejores rutas anteriores
+    hijos = []
+    for i in range(0, len(padres), 2): #Toma padres de 2 en dos para dfespues hacer cruces aleatorios entre las rutas generando hijos
+        punto_cruce = random.randint(0, len(padres[i]) - 1)
+        hijo1 = padres[i][:punto_cruce] + [x for x in padres[i + 1] if x not in padres[i][:punto_cruce]]
+        hijo2 = padres[i + 1][:punto_cruce] + [x for x in padres[i] if x not in padres[i + 1][:punto_cruce]]
+        hijos.extend([hijo1, hijo2]) #Agrega los hijos generados a la lista
+    return hijos
+
+def mutar(hijos):  #intercambia ciudades (cromosomas) en la rutas de los hijos generando asi variabilidad y aumentando la exploración de soluciones
+    for i in range(len(hijos)):
+        if random.random() < tasa_mutacion: #Hace la mutacion para el hijo actual aleatoriamente y dependiendo de la tasa de mutacion
+            punto_mutacion = random.sample(range(num_ciudades), 2)
+            hijos[i][punto_mutacion[0]], hijos[i][punto_mutacion[1]] = hijos[i][punto_mutacion[1]], hijos[i][punto_mutacion[0]]
+    return hijos
+
+def dibujar_ruta(ruta, ciudades):   #dibuja en una grafica todas las ciudades y la mejor ruta
+    x = [ciudades[i][0] for i in ruta]
+    y = [ciudades[i][1] for i in ruta]
+    x.append(x[0])  # Volver al punto de inicio
+    y.append(y[0])
+    plt.plot(x, y, marker='o', linestyle='-', color='b')
+    plt.scatter(x, y, marker='o', linestyle='-', color='r')
+    plt.title("Mejor Ruta")
+    plt.xlabel("Coordenada X")
+    plt.ylabel("Coordenada Y")
+    plt.show()
+
+def algoritmo_genetico(num_ciudades, tamano_poblacion, num_generaciones, tasa_mutacion):
+    ciudades = [(1, 1), (1, 15), (1, 15), (20, 3), (8, 12), (18, 20), (20, 20),(10, 15), (25, 15), (18, 15)]  #se ingresan las ciudades con sus coordenadas X,Y
+    distancias = generar_matriz_distancias(ciudades)
+
+    poblacion = inicializar_poblacion(num_ciudades, tamano_poblacion)
+
+    for generacion in range(num_generaciones):  #Inicializa el bucle que se repetira dependiendo del parametro de num_generaciones
+        padres = seleccionar_padres(poblacion, distancias)  #   Comienza a llamar todas las funciones del algoritmo
+        hijos = cruzar(padres)
+        hijos_mutados = mutar(hijos)
+        poblacion = hijos_mutados
+
+        mejor_ruta = min(poblacion, key=lambda x: evaluar_ruta(x, distancias)) #Evalua la mejor ruta en cada poblacion
+        mejor_longitud = evaluar_ruta(mejor_ruta, distancias)  #calcula la longitud de la mejor ruta encontrada
+
+        print(f"Generación {generacion + 1}: Mejor longitud de ruta = {mejor_longitud}, Mejor ruta = {mejor_ruta}")  #imprime en pantalla los valores generacion por generacion hasta terminar y muestra la mejor ruta de todas las generaciones
+
+    dibujar_ruta(mejor_ruta, ciudades)
+
+# Parámetros necesarios para el algoritmo
+num_ciudades = 10
+tamano_poblacion = 10
+num_generaciones = 60
+tasa_mutacion = 0.3
+
+# Ejecutar el algoritmo genético
+algoritmo_genetico(num_ciudades, tamano_poblacion, num_generaciones, tasa_mutacion)
+
+#Dada la aleatoriedad con la que se elijen las rutas en la inicializacion de la poblacion, los resultados entre cada corrida cambian, y al pasar las generaciones
+#El valor de la mejor ruta va mejorando.
